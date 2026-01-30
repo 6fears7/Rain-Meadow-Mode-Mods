@@ -9,7 +9,7 @@
     using MonoMod.RuntimeDetour;
     using UnityEngine;
     using RWCustom;
-    using RainMeadow; // Ensure you reference the Rain Meadow DLL
+    using RainMeadow; 
     using Random = UnityEngine.Random;
 
     namespace RotMeadow
@@ -17,7 +17,6 @@
         [BepInPlugin("uo.passagemostwhere", "Passage Mostwhere", "0.2.0")]
         public class PassageMostwhere : BaseUnityPlugin
         {
-            // Delegate for the manual property hook
             private delegate Vector2 orig_MapOwnerInRoomPosition(FastTravelScreen self);
 
             public static PassageMostwhere instance;
@@ -40,13 +39,11 @@
 
                 try
                 {
-                    // Standard On Hooks
                     On.Menu.FastTravelScreen.ctor += FastTravelScreen_ctor;
                     On.Menu.FastTravelScreen.Singal += FastTravelScreen_Singal;
                     On.HUD.Map.MapData.ShelterMarkerPosOfRoom += MapData_ShelterMarkerPosOfRoom;
 
-                    // Manual Hook for Property Getter: FastTravelScreen.MapOwnerInRoomPosition
-                    // We use manual RuntimeDetour here because property getters are sometimes tricky with generated On hooks
+
                     mapOwnerPosHook = new Hook(
                         typeof(FastTravelScreen).GetProperty("MapOwnerInRoomPosition", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).GetGetMethod(true),
                         new Func<orig_MapOwnerInRoomPosition, FastTravelScreen, Vector2>(FastTravelScreen_get_MapOwnerInRoomPosition_Hook)
@@ -63,13 +60,11 @@
                 }
             }
 
-            // Hook for FastTravelScreen.MapOwnerInRoomPosition (Property Getter)
             private Vector2 FastTravelScreen_get_MapOwnerInRoomPosition_Hook(orig_MapOwnerInRoomPosition orig, FastTravelScreen self)
             {
                 if (OnlineManager.lobby != null && !string.IsNullOrEmpty(OnlineManager.lobby.meadowTimeline))
                 {
-                    // Logic from "Pain" method in decompilation
-                    // Reconstruct MapData if necessary to avoid null refs, though this looks dangerous in production code
+
                     if (self.mapData == null || self.mapData.roomSizes == null)
                     {
                         self.mapData = new Map.MapData(null, self.manager.rainWorld);
@@ -92,7 +87,6 @@
                 return orig(self, room);
             }
 
-            // Hook for Menu.FastTravelScreen.Singal
             private void FastTravelScreen_Singal(On.Menu.FastTravelScreen.orig_Singal orig, FastTravelScreen self, MenuObject sender, string message)
             {
                 // Only intervene if we are in a Rain Meadow lobby with a timeline
@@ -190,12 +184,10 @@
                 }
                 else
                 {
-                    // Logic for vanilla behavior
                     orig(self, sender, message);
                 }
             }
 
-            // Hook for Menu.FastTravelScreen.ctor
             private void FastTravelScreen_ctor(On.Menu.FastTravelScreen.orig_ctor orig, FastTravelScreen self, ProcessManager manager, ProcessManager.ProcessID ID)
             {
                 orig(self, manager, ID);

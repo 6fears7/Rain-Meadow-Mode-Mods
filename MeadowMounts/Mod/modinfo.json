@@ -1,0 +1,11 @@
+{
+  "id": "uo_meadowmounts",
+  "name": "Meadow Mounts",
+  "version": "0.1.1",
+  "target_game_version": "v1.11.8",
+  "authors": "UO",
+  "description": "Carry and ride other creatures in Rain Meadow's Meadow mode",
+  "requirements": [ "henpemaz_rainmeadow" ],
+  "requirements_names": [ "Rain Meadow" ],
+  "tags": [ "Game Modes" ]
+}

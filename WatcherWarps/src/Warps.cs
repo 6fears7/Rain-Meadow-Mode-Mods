@@ -27,6 +27,11 @@ namespace WatcherWarps
             SuckInCreaturesHooks.Apply();
             ChangeStateHooks.Apply();
             WorldLoadedHooks.Apply();
+            RoomRealizerGuardHooks.Apply(); // phase 7-06 A-2
+            RainCycleGuardHooks.Apply(); // phase 7-07 B
+            AvatarWarpReentryHooks.Apply();
+            OrphanAvatarDiagnosticHooks.Apply(); // TEMP phase 7-05-00; remove after 7-05-03
+            RemoteAvatarRealizeHooks.Apply();
             PerformWarpStripHooks.Apply();
             ProgressionFilterGuardHooks.Apply();
             CorruptedWarpInjectionHooks.Apply();

@@ -24,10 +24,30 @@ namespace WatcherWarps
             creature = null!;
             if (Warps.IsMeadowWatcher()
                 && OnlineManager.lobby?.gameMode is MeadowGameMode mgm
+                && mgm.avatars.Count > 0
                 && mgm.avatars[0].realizedCreature is Creature c
                 && c is not Player)
             {
                 creature = c;
+                return true;
+            }
+            return false;
+        }
+
+        // Species-agnostic sibling of TryGetLocalNonPlayerAvatar: the local client's
+        // avatar creature whether it's a Player (Slugcat) or not. Used by the
+        // phase 7-03 pre-orig WorldSession handoff, which has to cover Player avatars
+        // too - vanilla's warpUsed branch never enters the avatar creature itself into
+        // the destination WorldSession regardless of species.
+        public static bool TryGetLocalAvatar(out AbstractCreature abstractCreature)
+        {
+            abstractCreature = null!;
+            if (Warps.IsMeadowWatcher()
+                && OnlineManager.lobby?.gameMode is MeadowGameMode mgm
+                && mgm.avatars.Count > 0
+                && mgm.avatars[0]?.abstractCreature is AbstractCreature ac)
+            {
+                abstractCreature = ac;
                 return true;
             }
             return false;

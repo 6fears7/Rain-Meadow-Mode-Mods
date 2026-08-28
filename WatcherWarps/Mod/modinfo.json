@@ -1,10 +1,10 @@
 {
   "id": "uo_watcherwarps",
-  "name": "Watcher Warps",
+  "name": "Meadow Mode: Watcher Warps",
   "version": "0.1.0",
   "target_game_version": "v1.11.8",
   "authors": "UO",
-  "description": "Watcher-style warp tunnels for Rain Meadow's Meadow mode",
+  "description": "Watcher warps for Rain Meadow's Meadow mode",
   "requirements": [ "henpemaz_rainmeadow" ],
   "requirements_names": [ "Rain Meadow" ],
   "tags": [ "Game Modes" ]

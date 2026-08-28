@@ -34,6 +34,22 @@ namespace WatcherWarps
                 return;
             }
 
+            if (self.currentState == WarpPoint.State.EnterWarp)
+            {
+                // Species-agnostic safety net: unlike the ReadyForWarp precast kick below
+                // (which only runs for a non-Player local avatar), this covers a Player
+                // (Slugcat) non-owner client too. RainMeadow's Watcher_WarpPoint_WarpPrecast
+                // hook (Story/StoryHooks.cs) makes self.WarpPrecast() a no-op for every
+                // non-owner client regardless of avatar species (unless it's an echo warp),
+                // so vanilla's own Player-driven Update - which calls self.WarpPrecast()
+                // once triggerTime crosses the threshold and then transitions straight to
+                // EnterWarp - gets silently eaten on a Slugcat client. EnterWarp's own state
+                // body then waits forever for warpWorldLoader.Finished, which never happens
+                // because InitiateSpecialWarp_WarpPoint was never called. Drive it here.
+                HandleEnterWarp(self);
+                return;
+            }
+
             // Invariant: a Meadow client's local avatar is either a Player (vanilla path
             // above already handled it) or it isn't (this path) — never both in the same
             // frame, since a client only has one local avatar. So we only need to check
@@ -107,26 +123,36 @@ namespace WatcherWarps
             // decompile lines 2374-2410.
             if (inRoom && dist < pullRadius && (self.visualOpenness > 0.5f || self.guaranteeTrigger))
             {
-                // Kick off the destination-region load. Vanilla WarpPoint.WarpPrecast
-                // clears canPreCast as its very first statement (decompile line 1978),
-                // *before* its own early-return guards — `warpWorldLoader` still in
-                // flight, or `overWorld.activeWorld != room.world`. On a Meadow client
-                // whose `activeWorld` doesn't reference the same World instance as the
-                // warp point's room (observed on non-host clients: the warp never calls
-                // OverWorld.InitiateSpecialWarp_WarpPoint at all), that guard trips, so
-                // WarpPrecast latches canPreCast=false and permanently disables precast
-                // for this point — the avatar then rides triggerTime into EnterWarp,
-                // which waits forever for a warpWorldLoader that was never created.
+                // Kick off the destination-region load once we're in range.
                 //
-                // So: keep retrying (re-arm canPreCast every tick until a load is
-                // actually queued), and only call WarpPrecast when its activeWorld guard
-                // will pass. DestinationLoadStarted() below gates the EnterWarp commit
-                // on this having succeeded.
+                // Rain Meadow's own On.Watcher.WarpPoint.WarpPrecast hook
+                // (Story/StoryHooks.cs Watcher_WarpPoint_WarpPrecast) early-returns
+                // *without calling orig* for every non-owner client
+                // (`OnlineManager.lobby != null && !isOwner`, not story-gated) to avoid
+                // racing the host's NormalExecuteWatcherRiftWarp RPC. That RPC only ever
+                // fires in Story mode, so in a Meadow sandbox this just silently
+                // suppresses the client's warp precast and nothing replaces it — the
+                // avatar then rides triggerTime into EnterWarp and waits forever for a
+                // warpWorldLoader that was never created.
+                //
+                // So drive the precast ourselves for non-owners: call
+                // OverWorld.InitiateSpecialWarp_WarpPoint directly (its Meadow hook has
+                // no owner gate). This also deliberately skips vanilla WarpPrecast's
+                // bad-warp destination re-roll, which we don't want for our curated
+                // fixed destinations anyway (plan/phase4). Owners keep using the real
+                // WarpPrecast. DestinationLoadStarted() below gates the EnterWarp commit.
                 if (!self.Data.rippleEggWarpPoint && Region.RegionReadyToWarp && !DestinationLoadStarted(self)
                     && self.room.game.overWorld.activeWorld == self.room.world)
                 {
-                    self.canPreCast = true;
-                    self.WarpPrecast();
+                    if (OnlineManager.lobby != null && !OnlineManager.lobby.isOwner)
+                    {
+                        DriveWarpPrecastForClient(self);
+                    }
+                    else
+                    {
+                        self.canPreCast = true;
+                        self.WarpPrecast();
+                    }
                 }
 
                 int touchedNoInputCounter = CreatureController.creatureControllers.TryGetValue(avatar, out CreatureController controller)
@@ -184,6 +210,37 @@ namespace WatcherWarps
             }
         }
 
+        // Replicates the essential tail of Watcher.WarpPoint.WarpPrecast (decompile
+        // lines 1985-2020) for a non-owner client, whose real WarpPrecast is a no-op
+        // (see caller). Only the non-rippleEgg / non-voidWeaver / non-badWarp-reroll
+        // path: our injected points carry an explicit curated destRegion/destRoom, so
+        // we pass Data straight through instead of rolling ChooseDynamicWarpTarget.
+        // The music GateEvent and the levitation bookkeeping are cosmetic and skipped.
+        private static void DriveWarpPrecastForClient(WarpPoint self)
+        {
+            OverWorld ow = self.room.game.overWorld;
+
+            // WarpPrecast's own guard: only fire when no loader is already running for
+            // this world (decompile lines 1985-1990).
+            if (ow.warpWorldLoader != null && !ow.warpWorldLoader.Finished)
+                return;
+
+            self.canPreCast = false;
+            self.canWarpToVoidWeaverEnding = self.CheckCanWarpToVoidWeaverEnding();
+
+            WarpPoint.WarpPointData data = self.overrideData ?? self.Data;
+            ow.InitiateSpecialWarp_WarpPoint(self, data, useNormalWarpLoader: false);
+
+            if (self.room.game.cameras.Length > 0)
+            {
+                self.room.game.cameras[0].WarpMoveCameraPrecast(data.destRoom, data.destCam);
+            }
+
+            Warps.Log?.LogInfo(
+                $"WatcherWarps: drove client-side warp precast for {data.RegionString}/{data.destRoom} " +
+                $"(warpingPreload={ow.warpingPreload})");
+        }
+
         // True once OverWorld has begun (or finished) loading the warp's destination
         // region — i.e. WarpPrecast successfully reached
         // OverWorld.InitiateSpecialWarp_WarpPoint. Mirrors the readiness checks in
@@ -194,6 +251,34 @@ namespace WatcherWarps
             return ow.warpWorldLoader != null
                 || ow.warpingPreload
                 || string.Equals(ow.activeWorld?.name, self.Data.RegionString, System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Species-agnostic precast safety net for the EnterWarp state (see call site
+        // comment above). Runs for every local avatar - Player or not - because
+        // RainMeadow's precast suppression for non-owner clients isn't species-gated
+        // either. A no-op once the destination load is already under way (the common
+        // case for the owner, and for a non-Player client whose ReadyForWarp-state
+        // precast kick already ran DriveWarpPrecastForClient below).
+        private static void HandleEnterWarp(WarpPoint self)
+        {
+            if (self.Data.rippleEggWarpPoint)
+                return;
+
+            if (OnlineManager.lobby == null || OnlineManager.lobby.isOwner)
+                return;
+
+            if (!Region.RegionReadyToWarp || DestinationLoadStarted(self))
+                return;
+
+            if (self.room?.game?.overWorld == null || self.room.game.overWorld.activeWorld != self.room.world)
+                return;
+
+            Warps.Log?.LogInfo(
+                $"WatcherWarps: EnterWarp reached on non-owner client with no destination load " +
+                $"queued (RainMeadow's WarpPrecast suppression) - driving precast for " +
+                $"{self.Data.RegionString}/{self.Data.destRoom}");
+
+            DriveWarpPrecastForClient(self);
         }
 
         // Generalizes the ExitWarp state body (decompile lines 2433-2447), which

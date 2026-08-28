@@ -61,6 +61,22 @@ namespace WatcherWarps
                         }
                         oe.beingMoved = false;
                     }
+                    else if (oe is OnlineCreature { isAvatar: true })
+                    {
+                        // Phase 7-02: do NOT ExitResource our own avatar. Meadow forbids
+                        // re-registering a live avatar (MeadowGameMode.ShouldRegisterAPO
+                        // gates Creatures behind sSpawningAvatar, and NewEntity throws
+                        // "entity re-register" for a realized one). ExitResource here
+                        // empties joinedResources -> OnlineEntity.OnLeftResource sees
+                        // primaryResource == null and Deregisters the avatar for good,
+                        // which is exactly the phase 7-01 "invisible after warp" bug.
+                        // Leave it registered and let OverWorld_WorldLoaded's warpUsed
+                        // branch (beingMoved loop + orig + AbstractRoom_AddEntity ->
+                        // ApoEnteringWorld's in-map branch) carry it to the destination
+                        // sessions with its identity intact, the same way a whole-lobby
+                        // watcher warp does. Story can strip-and-re-register; Meadow can't.
+                        oe.beingMoved = true;
+                    }
                     else
                     {
                         oe.ExitResource(roomSession);

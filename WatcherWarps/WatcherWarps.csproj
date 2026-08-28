@@ -1,0 +1,92 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net48</TargetFramework>
+		<AssemblyName>WatcherWarps</AssemblyName>
+		<RootNamespace>WatcherWarps</RootNamespace>
+		<LangVersion>latest</LangVersion>
+		<Nullable>enable</Nullable>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<Configurations>Debug;Release</Configurations>
+		<EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Compile Include="src/**/*.cs" />
+	</ItemGroup>
+
+	<!-- Where Rain World lives. Override on the command line if yours is elsewhere:
+	     dotnet build -p:RainWorldDir="/path/to/Rain World" -->
+	<PropertyGroup>
+		<RainWorldDir Condition="'$(RainWorldDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/Rain World</RainWorldDir>
+		<RainMeadowDir Condition="'$(RainMeadowDir)' == ''">$(MSBuildThisFileDirectory)../../Rain-Meadow/Mod/plugins</RainMeadowDir>
+		<!-- The live install the game loads from. Set InstallToGame=false to skip the copy. -->
+		<GameModDir Condition="'$(GameModDir)' == ''">$(RainWorldDir)/RainWorld_Data/StreamingAssets/mods/watcherwarps</GameModDir>
+		<InstallToGame Condition="'$(InstallToGame)' == ''">true</InstallToGame>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- PUBLIC-Assembly-CSharp is the publicised game assembly BepInEx generates; it exposes
+		     the private members the game's own code touches. -->
+		<Reference Include="Assembly-CSharp">
+			<HintPath>$(RainWorldDir)/BepInEx/utils/PUBLIC-Assembly-CSharp.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="Assembly-CSharp-firstpass">
+			<HintPath>$(RainWorldDir)/RainWorld_Data/Managed/Assembly-CSharp-firstpass.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="HOOKS-Assembly-CSharp">
+			<HintPath>$(RainWorldDir)/BepInEx/plugins/HOOKS-Assembly-CSharp.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="BepInEx">
+			<HintPath>$(RainWorldDir)/BepInEx/core/BepInEx.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="0Harmony">
+			<HintPath>$(RainWorldDir)/BepInEx/core/0Harmony.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="MonoMod.RuntimeDetour">
+			<HintPath>$(RainWorldDir)/RainWorld_Data/Managed/MonoMod.RuntimeDetour.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="MonoMod.Utils">
+			<HintPath>$(RainWorldDir)/RainWorld_Data/Managed/MonoMod.Utils.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="UnityEngine">
+			<HintPath>$(RainWorldDir)/RainWorld_Data/Managed/UnityEngine.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="UnityEngine.CoreModule">
+			<HintPath>$(RainWorldDir)/RainWorld_Data/Managed/UnityEngine.CoreModule.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="UnityEngine.InputLegacyModule">
+			<HintPath>$(RainWorldDir)/RainWorld_Data/Managed/UnityEngine.InputLegacyModule.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="Rain Meadow">
+			<HintPath>$(RainMeadowDir)/Rain Meadow.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+	</ItemGroup>
+
+	<Target Name="CopyToMod" AfterTargets="PostBuildEvent">
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MSBuildThisFileDirectory)Mod/plugins" />
+	</Target>
+
+	<!-- Drop the fresh build straight into the game so a rebuild is all it takes to test.
+	     The mod metadata rides along, otherwise the installed copy silently drifts from the
+	     repo (a missing rainmeadow.json would quietly disable the sync-required flag). -->
+	<Target Name="InstallToGame" AfterTargets="CopyToMod" Condition="'$(InstallToGame)' == 'true'">
+		<ItemGroup>
+			<ModMetadata Include="$(MSBuildThisFileDirectory)Mod/*.*" />
+		</ItemGroup>
+		<MakeDir Directories="$(GameModDir)/plugins" />
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameModDir)/plugins" />
+		<Copy SourceFiles="@(ModMetadata)" DestinationFolder="$(GameModDir)" />
+		<Message Importance="high" Text="Installed to $(GameModDir)" />
+	</Target>
+</Project>

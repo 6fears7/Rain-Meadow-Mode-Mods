@@ -34,6 +34,8 @@ namespace MeadowMounts
             if (realizedState == null) throw new MissingMethodException("AbstractCreatureState.GetRealizedState not found - Rain Meadow version mismatch?");
 
             harmony.Patch(realizedState, prefix: new HarmonyMethod(AccessTools.Method(typeof(Mounts), nameof(GetRealizedStatePrefix))));
+
+            EmoteWheelKeyHooks.Apply(log);
         }
 
         private static bool GetRealizedStatePrefix(OnlinePhysicalObject onlineObject, ref RealizedPhysicalObjectState __result)

@@ -1,22 +1,22 @@
 using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using RainMeadow;
+using Watcher;
 
 namespace WatcherWarps
 {
-    // Rain Meadow's OnlineGameMode.cosmeticItems (GameModes/OnlineGameModeHelpers.cs) is
-    // the whitelist OnlineGameMode.AllowedInMode / FilterItems use to decide which placed
-    // objects survive into a Meadow lobby. As shipped it does NOT contain
-    // PlacedObject.Type.WarpPoint, so every WarpPoint in a room - including the ones this
-    // mod's curated routes rely on - gets item.active = false during FilterItems and never
-    // spawns.
-    //
-    // Rather than mutate the shipped HashSet (version-fragile, and it's a field initializer
-    // that also feeds non-Watcher lobbies), postfix AllowedInMode and force-allow WarpPoint
-    // only under the Meadow+Watcher guard. MeadowGameMode.AllowedInMode calls
-    // base.AllowedInMode, which is this same method, so the override still sees the true.
+
     public static class CosmeticWhitelistHooks
     {
+        private static readonly HashSet<PlacedObject.Type> extraAllowed = new()
+        {
+            PlacedObject.Type.WarpPoint,
+            WatcherEnums.PlacedObjectType.BigSkyWhaleSpawner,
+            WatcherEnums.PlacedObjectType.BigSkyWhaleTrigger,
+            PlacedObject.Type.SkyWhalePathfinding, // base enum: the spawner finds no path without it
+        };
+
         public static void Apply()
         {
             var target = AccessTools.Method(typeof(OnlineGameMode), nameof(OnlineGameMode.AllowedInMode));
@@ -29,8 +29,7 @@ namespace WatcherWarps
 
         private static void AllowedInModePostfix(PlacedObject item, ref bool __result)
         {
-            if (__result) return;
-            if (item?.type != PlacedObject.Type.WarpPoint) return;
+            if (__result || item?.type == null || !extraAllowed.Contains(item.type)) return;
             if (!Warps.IsMeadowWatcher()) return;
 
             __result = true;

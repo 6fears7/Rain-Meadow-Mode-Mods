@@ -31,22 +31,6 @@ namespace MeadowMounts
         private const int RegrabGrace = 20;
         private const int PressLatchFrames = 10;
 
-        private const float VisualContactSkipGap = 20f;
-
-        private static BodyChunk NearestChunk(Creature c, Vector2 to)
-        {
-            var best = c.bodyChunks[0];
-            var bestDist = float.MaxValue;
-            foreach (var chunk in c.bodyChunks)
-            {
-                var dist = Vector2.Distance(chunk.pos, to);
-                if (dist >= bestDist) continue;
-                best = chunk;
-                bestDist = dist;
-            }
-            return best;
-        }
-
         private static int RidersOf(Creature mount, List<MountLink> scratch)
         {
             MountTopology.ChildrenOf(mount, scratch);
@@ -145,12 +129,16 @@ namespace MeadowMounts
                 }
             }
 
-            if (pickupPressed && !TryGrab(cc, state) && MountDebug.Verbose)
+            // Lizards don't grab on the button press - the bite is committed when the jaws
+            // close again (button release), driven entirely by ApplyJawControl -> TryMouthSnap.
+            if (self is Lizard lizard)
+            {
+                ApplyJawControl(lizard, pickup, state);
+            }
+            else if (pickupPressed && !TryGrab(cc, state) && MountDebug.Verbose)
             {
                 LogGrabFailure(self, state);
             }
-
-            if (self is Lizard lizard) ApplyJawControl(lizard, pickup, state);
         }
 
         private static void ApplyJawControl(Lizard lizard, bool rawHeld, State state)
@@ -194,16 +182,12 @@ namespace MeadowMounts
                         continue;
                     }
 
-                    var hold = MountRules.HoldPoint(MountKind.Mouth, other, lizard.mainBodyChunk.pos);
-                    var selfChunk = NearestChunk(lizard, hold.pos);
-                    var dist = Vector2.Distance(selfChunk.pos, hold.pos);
-                    var gap = dist - selfChunk.rad - hold.rad;
-                    if (gap > MountRules.ReachRange || dist >= bestDist) continue;
-                    if (gap > VisualContactSkipGap && !lizard.room.VisualContact(selfChunk.pos, hold.pos)) continue;
+                    if (!MountRules.TryReach(lizard, MountKind.Mouth, other, out var hold, out var reachDist)) continue;
+                    if (hold == null || reachDist >= bestDist) continue;
 
                     best = other;
                     bestHold = hold;
-                    bestDist = dist;
+                    bestDist = reachDist;
                 }
             }
 
@@ -404,18 +388,13 @@ namespace MeadowMounts
                         continue;
                     }
 
-                    var hold = MountRules.HoldPoint(kind.Value, other, self.mainBodyChunk.pos);
-
-                    var selfChunk = NearestChunk(self, hold.pos);
-                    var dist = Vector2.Distance(selfChunk.pos, hold.pos);
-                    var gap = dist - selfChunk.rad - hold.rad;
-                    if (gap > MountRules.ReachRange || dist >= bestDist) continue;
-                    if (gap > VisualContactSkipGap && !self.room.VisualContact(selfChunk.pos, hold.pos)) continue;
+                    if (!MountRules.TryReach(self, kind.Value, other, out var hold, out var reachDist)) continue;
+                    if (hold == null || reachDist >= bestDist) continue;
 
                     best = other;
                     bestHold = hold;
                     bestKind = kind.Value;
-                    bestDist = dist;
+                    bestDist = reachDist;
                 }
             }
 
@@ -499,25 +478,13 @@ namespace MeadowMounts
                     {
                         candidateReason = $"seats full ({riders}/{MountRules.SeatCapacity(other)})";
                     }
+                    else if (!MountRules.TryReach(self, kind.Value, other, out _, out var reachDist))
+                    {
+                        candidateReason = $"out of reach (dist={reachDist:0.0})";
+                    }
                     else
                     {
-                        var hold = MountRules.HoldPoint(kind.Value, other, self.mainBodyChunk.pos);
-                        var selfChunk = NearestChunk(self, hold.pos);
-                        var gapDist = Vector2.Distance(selfChunk.pos, hold.pos);
-                        var gap = gapDist - selfChunk.rad - hold.rad;
-
-                        if (gap > MountRules.ReachRange)
-                        {
-                            candidateReason = $"out of reach (gap={gap:0.0}, range={MountRules.ReachRange:0.0})";
-                        }
-                        else if (gap > VisualContactSkipGap && !self.room.VisualContact(selfChunk.pos, hold.pos))
-                        {
-                            candidateReason = "no visual contact";
-                        }
-                        else
-                        {
-                            candidateReason = "reach/LOS ok - Creature.Grab itself must have rejected it";
-                        }
+                        candidateReason = "reach/LOS ok - Creature.Grab itself must have rejected it";
                     }
 
                     nearest = other;

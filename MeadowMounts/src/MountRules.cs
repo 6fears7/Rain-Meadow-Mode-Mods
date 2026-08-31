@@ -110,6 +110,85 @@ namespace MeadowMounts
             return best;
         }
 
+        // A manual button press gets one shot at a bite, where the vanilla AI retries every
+        // frame while steering itself onto the target - and online latency eats into that
+        // window further - so the player-driven bite reaches noticeably further than vanilla:
+        // the snout anchor is projected forward by biteInFront scaled up plus a flat bonus,
+        // and the hit tolerance gets extra slack on top of the species bite radius.
+        public const float MouthBiteInFrontMult = 1.6f;
+        public const float MouthBiteExtraReach = 22f;
+        public const float MouthBiteSlack = 16f;
+
+        private const float VisualContactSkipGap = 20f;
+
+        // Single reach test shared by every grab entry point (press-grab, jaw-snap, and the
+        // debug logger) so one button tap is judged the same way each time. Mouth holds reuse
+        // the vanilla Lizard.AttemptBite geometry - a point projected in front of the snout,
+        // checked against every target chunk with the lizard's own species bite tolerance -
+        // rather than a flat gap measured from whichever body chunk happened to be nearest,
+        // which is what made bites feel inconsistent depending on how the lizard was curled.
+        public static bool TryReach(Creature grabber, MountKind kind, Creature target,
+            out BodyChunk? hold, out float dist)
+        {
+            if (kind == MountKind.Mouth && grabber is Lizard liz)
+            {
+                return MouthReach(liz, target, MouthBiteSlack, out hold, out dist);
+            }
+
+            hold = HoldPoint(kind, target, grabber.mainBodyChunk.pos);
+            var grabberChunk = NearestChunk(grabber, hold.pos);
+            dist = Vector2.Distance(grabberChunk.pos, hold.pos);
+            var gap = dist - grabberChunk.rad - hold.rad;
+            if (gap > ReachRange) return false;
+            if (gap > VisualContactSkipGap && grabber.room != null
+                && !grabber.room.VisualContact(grabberChunk.pos, hold.pos))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        // Where the lizard's jaws actually reach: its head, pushed forward along the
+        // head-from-body axis by the species' biteInFront distance. Mirrors AttemptBite.
+        public static Vector2 BiteAnchor(Lizard liz)
+        {
+            var dir = (liz.mainBodyChunk.pos - liz.bodyChunks[1].pos).normalized;
+            return liz.mainBodyChunk.pos
+                   + dir * (liz.lizardParams.biteInFront * MouthBiteInFrontMult + MouthBiteExtraReach);
+        }
+
+        private static bool MouthReach(Lizard liz, Creature target, float slack,
+            out BodyChunk? hold, out float dist)
+        {
+            var mouth = BiteAnchor(liz);
+            hold = null;
+            dist = float.MaxValue;
+            foreach (var bc in target.bodyChunks)
+            {
+                var d = Vector2.Distance(mouth, bc.pos);
+                var tol = (ModManager.MMF ? Mathf.Max(8f, bc.rad) : bc.rad)
+                          + liz.lizardParams.biteRadBonus + slack;
+                if (d > tol || d >= dist) continue;
+                hold = bc;
+                dist = d;
+            }
+            return hold != null;
+        }
+
+        private static BodyChunk NearestChunk(Creature c, Vector2 to)
+        {
+            var best = c.bodyChunks[0];
+            var bestDist = float.MaxValue;
+            foreach (var chunk in c.bodyChunks)
+            {
+                var d = Vector2.Distance(chunk.pos, to);
+                if (d >= bestDist) continue;
+                best = chunk;
+                bestDist = d;
+            }
+            return best;
+        }
+
         private const float SeatStart = 0.35f;
         private const float SeatEnd = 0.95f;
 

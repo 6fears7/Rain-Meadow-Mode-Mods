@@ -33,6 +33,7 @@ namespace MeadowMounts
 
         public readonly Configurable<string> grabButton;
         public readonly Configurable<string> releaseButton;
+        public readonly Configurable<KeyCode> emoteWheelKey;
 
         private MountOptions()
         {
@@ -47,6 +48,11 @@ namespace MeadowMounts
                     "mount (e.g. you're a lizard being ridden), use Special to shake them of. Use Jump to get yourself out of a mount, " +
                     "grip, mouth, or piggyback.",
                     new ConfigAcceptableList<string>(MountButtons.All)));
+
+            emoteWheelKey = config.Bind("emoteWheelKey", KeyCode.None,
+                new ConfigurableInfo(
+                    "Key that opens the Meadow emote radial wheel. Leave unbound for stock " +
+                    "behavior (grab button); bind a key to open the wheel with that instead of grab."));
         }
 
         public override void Initialize()
@@ -62,6 +68,8 @@ namespace MeadowMounts
                 new OpComboBox(grabButton, new Vector2(20f, 470f), 150f, MountButtons.All),
                 new OpLabel(220f, 500f, "Release / let go button"),
                 new OpComboBox(releaseButton, new Vector2(220f, 470f), 150f, MountButtons.All),
+                new OpLabel(20f, 430f, "Emote wheel key"),
+                new OpKeyBinder(emoteWheelKey, new Vector2(20f, 395f), new Vector2(150f, 30f)),
                 new OpLabelLong(new Vector2(20f, 100f), new Vector2(500f, 260f),
                     "These two cover your own actions when you're grabbing something new and " +
                     "letting go of something you've grabbed.\n\n" +

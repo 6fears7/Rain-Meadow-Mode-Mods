@@ -11,9 +11,6 @@ namespace WatcherWarps
     {
         internal static ManualLogSource? Log;
 
-        // Shared gate for every warp hook in this mod: only run in a Meadow lobby whose
-        // selected timeline is Watcher, so story-mode and non-Watcher-timeline Meadow
-        // lobbies keep vanilla behavior untouched. See plan/phase5-01-guard-consolidation-decision.md.
         public static bool IsMeadowWatcher()
         {
             return OnlineManager.lobby?.gameMode is MeadowGameMode
@@ -24,6 +21,7 @@ namespace WatcherWarps
         {
             Log = log;
             WarpPointTriggerHooks.Apply();
+            AvatarWarpStateTickHooks.Apply(); // phase 8-01: tick down CWT warp cooldowns
             SuckInCreaturesHooks.Apply();
             ChangeStateHooks.Apply();
             WorldLoadedHooks.Apply();
@@ -46,22 +44,6 @@ namespace WatcherWarps
             Log.LogInfo("Watcher Warps: trigger-detection, suck-in, change-state, world-loaded, performwarp-strip, progression-filter-guard, corrupted-warp-injection, arrival-marker, daemon-warp-redirect, establish-worlds, timeline-region-guard, cosmetic-whitelist, and shortcut-graphics-guard hooks applied");
         }
 
-        // Builds a one-off "corrupted destination" WarpPoint's backing PlacedObject,
-        // ready for Room.TrySpawnWarpPoint. Mirrors vanilla's own
-        // Room.LoadWarpsFromSaveState pattern (a save-state-driven PlacedObject with no
-        // room-content backing) rather than authoring a _settings.txt entry, since this
-        // mod ships no room content of its own (see plan/phase4-00-overview.md).
-        //
-        // oneWay/oneWayEntrance=false makes Data.oneWayExit true, matching a bad-warp's
-        // one-directional theming (no reciprocal return trip) and, per
-        // plan/phase4-01-injection-mechanism-investigation.md, also bypasses
-        // TrySpawnWarpPoint's non-dynamic "destRoom must already be referenced by a real
-        // placed object in this room" sanity gate.
-        //
-        // Callers MUST set po.pos (to Warps.ReachablePos(room) or an authored spot) before
-        // handing this to Room.TrySpawnWarpPoint - a WarpPoint takes its world position
-        // straight from placedObject.pos, and the default Vector2.zero would drop the
-        // trigger (and, for a return leg, the arrival) in the bottom-left corner.
         public static PlacedObject BuildCorruptedWarpPlacedObject(string destRegion, string destRoom)
         {
             var po = new PlacedObject(PlacedObject.Type.WarpPoint, null);
@@ -70,12 +52,6 @@ namespace WatcherWarps
                 effectSettings = WarpPoint.WarpPointData.EffectSettings.BadWarpCosmetics(),
                 destRegion = destRegion,
                 destRoom = destRoom,
-                // Left null on purpose: Watcher.WarpPoint.NewWorldLoaded backfills a null
-                // destPos from a PlacedObject.Type.DynamicWarpTarget in the destination room
-                // (decompiled.cs:3660-3672) - matching vanilla's own real bad-warp rooms,
-                // which all carry one. ArrivalMarkerHooks plants that marker (at a real
-                // walkable position) in every room this mod could route someone into, so
-                // this fallback always finds one instead of NREing on a still-null Nullable.
                 destPos = null,
                 oneWay = true,
                 oneWayEntrance = false,
@@ -84,18 +60,7 @@ namespace WatcherWarps
             return po;
         }
 
-        // Finds a real, standable tile in an already-loaded room, for planting an arrival
-        // marker (see ArrivalMarkerHooks) or a warp trigger. A WarpPoint/PlacedObject takes
-        // its world position straight from placedObject.pos (Watcher.WarpPoint ctor,
-        // decompiled line 1097), and OverWorld.WorldLoaded's arrival fixup drops the avatar
-        // at the warp's destPos, so an unvetted position risks landing in solid geometry or
-        // the bottom-left corner (0,0).
-        //
-        // "Standable" mirrors Rain Meadow's own placement test in
-        // MeadowGameMode.RegisterPlacesInRoom's ValidPlacement: a non-solid, non-shortcut
-        // tile with solid/slope footing below and open headroom above. Prefers the standable
-        // tile nearest room centre; then any non-solid tile nearest centre; then (last
-        // resort, old behavior) a room-exit shortcut mouth; then room centre. Never (0,0).
+
         public static Vector2 ReachablePos(Room room)
         {
             var centre = new IntVector2(room.TileWidth / 2, room.TileHeight / 2);
@@ -146,9 +111,6 @@ namespace WatcherWarps
             return room.MiddleOfTile(centre);
         }
 
-        // Mirrors MeadowGameMode.RegisterPlacesInRoom's ValidPlacement: a non-solid,
-        // non-shortcut tile whose tile below is solid/slope/shortcut (footing) and whose
-        // tile above is not (headroom).
         private static bool IsStandable(Room room, IntVector2 t)
         {
             var terrain = room.GetTile(t).Terrain;

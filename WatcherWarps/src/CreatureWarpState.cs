@@ -19,6 +19,20 @@ namespace WatcherWarps
             return states.GetValue(creature, c => new CreatureWarpState());
         }
 
+
+        public void Tick()
+        {
+            if (warpPointCooldown > 0) warpPointCooldown--;
+            if (warpExhausionTime > 0) warpExhausionTime--;
+            if (standingInWarpPointProtectionTime > 0) standingInWarpPointProtectionTime--;
+            if (performingActivationTimer > 0) performingActivationTimer--;
+
+            // Drop the stale reference once the avatar is off cooldown so the next
+            // warp doesn't see a dead WarpPoint from the previous trip.
+            if (warpPointCooldown <= 0 && warpExhausionTime <= 0)
+                triggeredWarpPoint = null;
+        }
+
         public static bool TryGetLocalNonPlayerAvatar(out Creature creature)
         {
             creature = null!;

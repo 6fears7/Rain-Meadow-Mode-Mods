@@ -14,19 +14,14 @@
 		<Compile Include="src/**/*.cs" />
 	</ItemGroup>
 
-	<!-- Where Rain World lives. Override on the command line if yours is elsewhere:
-	     dotnet build -p:RainWorldDir="/path/to/Rain World" -->
 	<PropertyGroup>
 		<RainWorldDir Condition="'$(RainWorldDir)' == ''">$(HOME)/.local/share/Steam/steamapps/common/Rain World</RainWorldDir>
 		<RainMeadowDir Condition="'$(RainMeadowDir)' == ''">$(MSBuildThisFileDirectory)../../Rain-Meadow/Mod/plugins</RainMeadowDir>
-		<!-- The live install the game loads from. Set InstallToGame=false to skip the copy. -->
 		<GameModDir Condition="'$(GameModDir)' == ''">$(RainWorldDir)/RainWorld_Data/StreamingAssets/mods/watcherwarps</GameModDir>
 		<InstallToGame Condition="'$(InstallToGame)' == ''">true</InstallToGame>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- PUBLIC-Assembly-CSharp is the publicised game assembly BepInEx generates; it exposes
-		     the private members the game's own code touches. -->
 		<Reference Include="Assembly-CSharp">
 			<HintPath>$(RainWorldDir)/BepInEx/utils/PUBLIC-Assembly-CSharp.dll</HintPath>
 			<Private>False</Private>

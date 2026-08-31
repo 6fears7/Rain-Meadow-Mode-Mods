@@ -27,6 +27,7 @@ namespace WatcherWarps
             WorldLoadedHooks.Apply();
             RoomRealizerGuardHooks.Apply(); // phase 7-06 A-2
             RainCycleGuardHooks.Apply(); // phase 7-07 B
+            GhostSedaterNeuterHooks.Apply(); // phase11-01: stop GhostCreatureSedater stunlocking non-Slugcat avatars
             AvatarWarpReentryHooks.Apply();
             OrphanAvatarDiagnosticHooks.Apply(); // TEMP phase 7-05-00; remove after 7-05-03
             RemoteAvatarRealizeHooks.Apply();

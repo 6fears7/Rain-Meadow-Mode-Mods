@@ -160,12 +160,14 @@ namespace MeadowMounts
         private static bool MouthReach(Lizard liz, Creature target, float slack,
             out BodyChunk? hold, out float dist)
         {
+
+            var head = liz.mainBodyChunk.pos;
             var mouth = BiteAnchor(liz);
             hold = null;
             dist = float.MaxValue;
             foreach (var bc in target.bodyChunks)
             {
-                var d = Vector2.Distance(mouth, bc.pos);
+                var d = DistanceToSegment(bc.pos, head, mouth);
                 var tol = (ModManager.MMF ? Mathf.Max(8f, bc.rad) : bc.rad)
                           + liz.lizardParams.biteRadBonus + slack;
                 if (d > tol || d >= dist) continue;
@@ -173,6 +175,15 @@ namespace MeadowMounts
                 dist = d;
             }
             return hold != null;
+        }
+
+        private static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            var ab = b - a;
+            var len2 = ab.sqrMagnitude;
+            if (len2 < 0.0001f) return Vector2.Distance(p, a);
+            var t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / len2);
+            return Vector2.Distance(p, a + ab * t);
         }
 
         private static BodyChunk NearestChunk(Creature c, Vector2 to)

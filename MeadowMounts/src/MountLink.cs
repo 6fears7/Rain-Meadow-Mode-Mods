@@ -65,7 +65,11 @@ namespace MeadowMounts
             && !passenger.dead && !anchor.dead
             && (kind == MountKind.BackRide
                 ? passenger is Player p && anchor is Player a && p.onBack == a && a.slugOnBack?.slugcat == p
-                : grasp?.grabbed != null);
+                // Grasp.Release() only sets discontinued and nulls the grabber's slot - it
+                // leaves grabbed pointing at the old object - so a released grasp still reads
+                // as "grabbed != null". Cached links (state.owned, DetectSilentDrop) have to
+                // test discontinued or they never notice a drop.
+                : grasp is { discontinued: false, grabbed: not null });
     }
 
     public static class MountTopology

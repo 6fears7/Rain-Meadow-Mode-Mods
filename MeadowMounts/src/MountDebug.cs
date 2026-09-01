@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using RainMeadow;
 using UnityEngine;
 
@@ -12,10 +14,61 @@ namespace MeadowMounts
 
         private static int lastDumpFrame = -1;
 
+        private static readonly Dictionary<string, int> throttleUntil = new();
+
         public static void Log(string message)
         {
             if (!Verbose) return;
             Mounts.Log?.LogInfo("[MeadowMounts] " + message);
+        }
+
+        public static bool Throttle(string key, int frames = 30)
+        {
+            if (throttleUntil.TryGetValue(key, out var until) && Time.frameCount < until) return false;
+            throttleUntil[key] = Time.frameCount + frames;
+            return true;
+        }
+
+        public static string Name(PhysicalObject? obj)
+        {
+            if (obj == null) return "null";
+
+            var apo = obj.abstractPhysicalObject;
+            var owner = "?";
+            try
+            {
+                if (OnlineManager.lobby != null && apo?.GetOnlineObject() is { } online)
+                {
+                    owner = online.isMine ? "mine" : "remote";
+                }
+            }
+            catch
+            {
+                owner = "err";
+            }
+
+            return $"{obj.GetType().Name}#{apo?.ID.number ?? -1}({owner})";
+        }
+
+        public static string Slots(Creature c)
+        {
+            if (c.grasps == null) return "(no grasp array)";
+            return string.Join(", ", c.grasps.Select((g, i) =>
+                g == null ? $"{i}:-" : $"{i}:{Name(g.grabbed)}{(g.discontinued ? "!DISCONTINUED" : "")}"));
+        }
+
+
+        public static string Caller(int frames = 8)
+        {
+            var trace = new System.Diagnostics.StackTrace(1, false);
+            var sb = new StringBuilder();
+            for (int i = 0; i < frames && i < trace.FrameCount; i++)
+            {
+                var m = trace.GetFrame(i)?.GetMethod();
+                if (m == null) continue;
+                sb.Append("\n      <- ").Append(m.DeclaringType?.Name ?? "?").Append('.').Append(m.Name);
+            }
+            return sb.ToString();
         }
 
         public static void MaybeDump(Room? room)
@@ -41,7 +94,8 @@ namespace MeadowMounts
 
                     Mounts.Log?.LogInfo(
                         $"{c.GetType().Name,-14} len={length,6:0.00}  mass={c.TotalMass,5:0.00}  " +
-                        $"chunks=[{chunkRads}]  conns=[{connDists}]  grasps={c.grasps?.Length ?? 0}");
+                        $"chunks=[{chunkRads}]  conns=[{connDists}]  grasps={c.grasps?.Length ?? 0}  " +
+                        $"slots=[{Slots(c)}]");
                 }
             }
         }

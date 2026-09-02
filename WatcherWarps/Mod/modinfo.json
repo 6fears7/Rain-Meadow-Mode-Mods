@@ -1,10 +1,10 @@
 {
   "id": "uo_watcherwarps",
   "name": "Meadow Mode: Watcher Warps",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "target_game_version": "v1.11.8",
   "authors": "UO",
-  "description": "Watcher warps for Rain Meadow's Meadow mode",
+  "description": "Watcher warps for Rain Meadow's Meadow mode. Set your default Outskirts warp destination in Remix",
   "requirements": [ "henpemaz_rainmeadow" ],
   "requirements_names": [ "Rain Meadow" ],
   "tags": [ "Game Modes" ]

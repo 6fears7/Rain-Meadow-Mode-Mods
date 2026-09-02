@@ -41,8 +41,11 @@ namespace WatcherWarps
             CosmeticWhitelistHooks.Apply();
             ShortcutGraphicsGuardHooks.Log = log;
             ShortcutGraphicsGuardHooks.Apply();
-            TestWarpHook.Apply(); // TEMP: remove once real routes are curated (see TestWarpHook.cs)
-            Log.LogInfo("Watcher Warps: trigger-detection, suck-in, change-state, world-loaded, performwarp-strip, progression-filter-guard, corrupted-warp-injection, arrival-marker, daemon-warp-redirect, establish-worlds, timeline-region-guard, cosmetic-whitelist, and shortcut-graphics-guard hooks applied");
+            MeadowHudGuardHooks.Log = log; // phase13-01: MeadowHud NRE deadlock during warp
+            MeadowHudGuardHooks.Apply();
+            OutskirtsWarpHook.Apply();
+            OutskirtsDestinationDriftCheck.Run(); // phase12-01-D: catch a stale OutskirtsDestinations mirror
+            Log.LogInfo("Watcher Warps: trigger-detection, suck-in, change-state, world-loaded, performwarp-strip, progression-filter-guard, corrupted-warp-injection, arrival-marker, daemon-warp-redirect, establish-worlds, timeline-region-guard, cosmetic-whitelist, shortcut-graphics-guard, meadow-hud-guard, and outskirts-warp hooks applied");
         }
 
         public static PlacedObject BuildCorruptedWarpPlacedObject(string destRegion, string destRoom)

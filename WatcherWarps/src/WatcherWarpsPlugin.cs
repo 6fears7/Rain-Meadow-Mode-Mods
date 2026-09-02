@@ -12,7 +12,18 @@ namespace WatcherWarps
     public class WatcherWarpsPlugin : BaseUnityPlugin
     {
         public const string ModId = "uo.watcherwarps";
-        public const string Version = "0.1.0";
+
+        // Deliberately different from ModId: this is Mod/modinfo.json's "id" field, which is
+        // what MachineConnector.SetRegisteredOI keys on (via ModManager.InstalledMods[i].id).
+        // ModId above is the BepInPlugin GUID, used for BepInEx's own plugin registry and the
+        // Rain Meadow soft-dependency check. SetRegisteredOI silently fails (no exception, no
+        // tab) if handed the wrong one, so do not "simplify" these into a single constant.
+        public const string RemixModId = "uo_watcherwarps";
+
+        // Keep in sync with Mod/modinfo.json's "version". Rain Meadow's sync_required_mods check
+        // compares the modinfo version across clients, so a lobby whose members run different
+        // builds under the same version number silently diverges instead of being rejected.
+        public const string Version = "0.1.2";
 
         private bool applied;
 
@@ -27,6 +38,12 @@ namespace WatcherWarps
             if (applied) return;
             try
             {
+                WatcherWarpsOptions.Instance = new WatcherWarpsOptions();
+                if (MachineConnector.SetRegisteredOI(RemixModId, WatcherWarpsOptions.Instance))
+                    MachineConnector.ReloadConfig(WatcherWarpsOptions.Instance);   // pull the saved value now, not on first menu open
+                else
+                    Logger.LogWarning($"Watcher Warps: SetRegisteredOI('{RemixModId}') returned false; Remix tab unavailable");
+
                 if (!BepInEx.Bootstrap.Chainloader.PluginInfos.ContainsKey("henpemaz.rainmeadow"))
                 {
                     Logger.LogWarning("Rain Meadow is not loaded; Watcher Warps is inactive");

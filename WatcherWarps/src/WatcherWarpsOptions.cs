@@ -50,9 +50,7 @@ namespace WatcherWarps
             OpLabel caveatLabel = new OpLabel(
                 new Vector2(40f, 290f),
                 new Vector2(520f, 60f),
-                "This setting is per-client: each player's own pick decides where THEIR portal sends " +
-                "them. Players with different settings landing on the same portal will end up in " +
-                "different rooms.",
+                "This setting is per-client for the destination of the Outskirts portal",
                 FLabelAlignment.Left)
             {
                 autoWrap = true

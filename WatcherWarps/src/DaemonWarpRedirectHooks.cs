@@ -53,6 +53,12 @@ namespace WatcherWarps
                 data.cycleExpiry = 0;          // nonDynamicWarpPoint => true; skips ChooseDynamicWarpTarget
                 data.oneWay = true;
                 data.oneWayEntrance = false;   // => Data.oneWayExit == true
+                // phase14-01: 21 of the 28 NULL/NULL points this redirects are rippleWarp=true,
+                // which fails transportable's ActiveRippleLayer gate forever in a Meadow sandbox
+                // (see plan/phase14-01-daemon-ripple-warp-gate.md). RippleWarpNeutralizeHooks
+                // would also catch this on the next room load, but set it here directly so the
+                // point is transportable immediately, without depending on hook ordering.
+                data.rippleWarp = false;
                 data.effectSettings = WarpPoint.WarpPointData.EffectSettings.BadWarpCosmetics();
                 data.destCam = WarpPoint.GetDestCam(data); // ctor computed this against a null dest
 

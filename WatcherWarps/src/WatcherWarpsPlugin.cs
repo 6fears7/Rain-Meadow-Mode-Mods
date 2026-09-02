@@ -23,7 +23,7 @@ namespace WatcherWarps
         // Keep in sync with Mod/modinfo.json's "version". Rain Meadow's sync_required_mods check
         // compares the modinfo version across clients, so a lobby whose members run different
         // builds under the same version number silently diverges instead of being rejected.
-        public const string Version = "0.1.2";
+        public const string Version = "0.1.3";
 
         private bool applied;
 

@@ -73,6 +73,7 @@ namespace WatcherWarps
             new Dest("WHIR/whir_c04", "WHIR", "whir_c04", "Corrupted Factories — whir_c04", "Vanilla bad-warp target"),
             new Dest("WSUR/wsur_a40", "WSUR", "wsur_a40", "Crumbling Fringes — wsur_a40", "Vanilla bad-warp target"),
 
+            new Dest("WAUA/waua_bath", "WAUA", "waua_bath", "Ancient Urban — waua_bath", ""),
 
             new Dest("SB/sb_d07", "SB", "sb_d07", "Subterranean — sb_d07", "scripted area, may misbehave"),
         };

@@ -36,6 +36,7 @@ namespace WatcherWarps
             CorruptedWarpInjectionHooks.Apply();
             ArrivalMarkerHooks.Apply();
             DaemonWarpRedirectHooks.Apply();
+            RippleWarpNeutralizeHooks.Apply(); // phase14-01: unblock rippleWarp=true points (Daemon) in Meadow sandboxes
             EstablishWorldsHooks.Apply();
             TimelineRegionGuardHooks.Apply();
             CosmeticWhitelistHooks.Apply();
@@ -45,7 +46,7 @@ namespace WatcherWarps
             MeadowHudGuardHooks.Apply();
             OutskirtsWarpHook.Apply();
             OutskirtsDestinationDriftCheck.Run(); // phase12-01-D: catch a stale OutskirtsDestinations mirror
-            Log.LogInfo("Watcher Warps: trigger-detection, suck-in, change-state, world-loaded, performwarp-strip, progression-filter-guard, corrupted-warp-injection, arrival-marker, daemon-warp-redirect, establish-worlds, timeline-region-guard, cosmetic-whitelist, shortcut-graphics-guard, meadow-hud-guard, and outskirts-warp hooks applied");
+            Log.LogInfo("Watcher Warps: trigger-detection, suck-in, change-state, world-loaded, performwarp-strip, progression-filter-guard, corrupted-warp-injection, arrival-marker, daemon-warp-redirect, ripple-warp-neutralize, establish-worlds, timeline-region-guard, cosmetic-whitelist, shortcut-graphics-guard, meadow-hud-guard, and outskirts-warp hooks applied");
         }
 
         public static PlacedObject BuildCorruptedWarpPlacedObject(string destRegion, string destRoom)
@@ -59,6 +60,7 @@ namespace WatcherWarps
                 destPos = null,
                 oneWay = true,
                 oneWayEntrance = false,
+                rippleWarp = false, // phase14-01: never build a point that fails transportable's ActiveRippleLayer gate
             };
             po.data = data;
             return po;
